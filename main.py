@@ -7,6 +7,8 @@ import struct
 from netCDF4 import Dataset
 
 from matplotlib import pyplot as plt
+import mpl_toolkits
+from mpl_toolkits.basemap import Basemap
 
 '''
 netcdf4 excecise
@@ -17,16 +19,56 @@ def walktree(top):
     for value in top.groups.values():
         yield from walktree(value)
 
-rootgrp = Dataset('E:\Documents\Datasets\Weather Data\\tasminAdjust_day_GFDL-CM3_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20000101-20041231.nc')
+# E:\\Documents\\Datasets\\Weather Data\\Temp Max\\tasmaxAdjust_day_GFDL-ESM2M_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20010101-20051231.nc"
+t_min_grp = Dataset("E:\\Documents\\Datasets\\Weather Data\\Temp Min\\tasminAdjust_day_GFDL-CM3_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20000101-20041231.nc")
 
-# for children in walktree(rootgrp):
+# for children in walktree(t_min_grp):
 #     for child in children:
 #         print(child)
 
-for name in rootgrp.ncattrs():
-    print(f'Global attr {getattr(rootgrp, name)}')
+# for name in t_min_grp.ncattrs():
+#     print(f'Global attr {getattr(t_min_grp, name)}')
 
-print(rootgrp.data_model)
+lats = t_min_grp.variables['lat'][:]
+lons = t_min_grp.variables['lon'][:]
+t_mins = t_min_grp.variables['tasminAdjust'][:]
+temp_units = t_min_grp.variables['tasminAdjust'].units
+
+t_min_grp.close()
+
+lon0 = lons.mean()
+lat0 = lats.mean()
+
+
+
+# this is for mapping... which might work?
+m = Basemap(width=8000000, height=3500000, resolution='l', projection='stere', lat_ts=40, lat_0=lat0, lon_0=lon0)
+
+lon, lat = np.meshgrid(lons, lats)
+xi, yi = m(lon, lat)
+
+# Plot data
+cs = m.pcolor(xi, yi, np.squeeze(t_mins[0]))
+
+# Add grid lines
+m.drawparallels(np.arange(-80., 81., 0.), labels=[1, 0, 0, 0], fontsize=10)
+m.drawparallels(np.arange(-180., 181., 10.), labels=[0, 0, 0, 1], fontsize=10)
+
+# Add coastlines, states and country boundaries
+m.drawcoastlines()
+m.drawstates()
+m.drawcountries()
+
+# Add colorbar
+cbar = m.colorbar(cs, location='bottom', pad='10%')
+cbar.set_label(temp_units)
+
+# add title
+plt.title('DJF Maximum Temperature')
+
+plt.show()
+
+print(t_min_grp.data_model)
 '''
 netcdf4 excecise
 '''
