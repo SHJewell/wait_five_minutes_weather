@@ -39,10 +39,9 @@ t_min_grp.close()
 lon0 = lons.mean()
 lat0 = lats.mean()
 
-
-
 # this is for mapping... which might work?
-m = Basemap(width=8000000, height=3500000, resolution='l', projection='stere', lat_ts=40, lat_0=lat0, lon_0=lon0)
+#m = Basemap(width=8000000, height=3500000, resolution='l', projection='stere', lat_ts=40, lat_0=lat0, lon_0=lon0)
+m = Basemap(width=12000000, height=9000000, resolution='l', projection='lcc', lat_1=45., lat_2=55, lat_0=50, lon_0=-107)
 
 lon, lat = np.meshgrid(lons, lats)
 xi, yi = m(lon, lat)
@@ -51,7 +50,7 @@ xi, yi = m(lon, lat)
 cs = m.pcolor(xi, yi, np.squeeze(t_mins[0]))
 
 # Add grid lines
-m.drawparallels(np.arange(-80., 81., 0.), labels=[1, 0, 0, 0], fontsize=10)
+m.drawparallels(np.arange(-80., 81., 10.), labels=[1, 0, 0, 0], fontsize=10)
 m.drawparallels(np.arange(-180., 181., 10.), labels=[0, 0, 0, 1], fontsize=10)
 
 # Add coastlines, states and country boundaries
@@ -67,7 +66,6 @@ cbar.set_label(temp_units)
 plt.title('DJF Maximum Temperature')
 
 plt.show()
-
 print(t_min_grp.data_model)
 '''
 netcdf4 excecise
