@@ -19,11 +19,19 @@ sea_lats = np.argwhere((lats > 46) & (lats < 47))
 sea_lons = np.argwhere((lons > 122) & (lons < 123))
 sea_tmins = t_mins[:, sea_lats, sea_lons].data
 
-fig, ax = plt.subplots()
+ft = np.fft.fft(sea_tmins)
 
-ax.plot(sea_tmins[:, 0, :])
-ax.plot(sea_tmins[:, 1, :])
+fig, ax = plt.subplots(3, 1)
 
+ax[0].plot(sea_tmins[:, 0, :], label=sea_lats[0])
+ax[0].plot(sea_tmins[:, 1, :], label=sea_lats[1])
+ax[1].plot(abs(sea_tmins[:, 0, :] - sea_tmins[:, 1, :]), label='Diff')
+ax[2].plot(np.real(ft[:, 0, :]), label=f'{sea_lats[0]} Real')
+ax[2].plot(np.imag(ft[:, 0, :]), label=f'{sea_lats[1]} Real')
+ax[2].plot(np.real(ft[:, 1, :]), label=f'{sea_lats[0]} Imag')
+ax[2].plot(np.imag(ft[:, 1, :]), label=f'{sea_lats[1]} Imag')
+
+plt.legend()
 plt.show()
 
 t_min_grp
