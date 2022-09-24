@@ -1,8 +1,8 @@
-import cfgrib
+#import cfgrib
 import xarray as xr
 import pandas as pd
 import numpy as np
-from osgeo import gdal
+#from osgeo import gdal
 import struct
 from netCDF4 import Dataset
 
