@@ -1,22 +1,65 @@
 import numpy as np
 from netCDF4 import Dataset
 import timeit
+from dataclasses import dataclass
 
-class nc_set():
-    def __init__(self, path, data_name):
-        self.path = path
-        self.var_name = data_name
-        self.init_dataset()
+@dataclass
+class NCSet:
+    path: str
+    var_name: str
+    stats: dict
+    lats: np.ma.core.MaskedArray
+    lons: np.ma.core.MaskedArray
+    time: np.ma.core.MaskedArray
+    # data: np.ma.core.MaskedArray  to be used to build an external database
+    min: np.ma.core.MaskedArray
+    max: np.ma.core.MaskedArray
+    median: np.ma.core.MaskedArray
+    var: np.ma.core.MaskedArray
+    # stddev: np.ma.core.MaskedArray
 
-    def init_dataset(self):
+
+    '''
+    I guess data classes don't need this if you have the hints above
+        def __init__(self, path: str, data_name: str):
+            self.path = path
+            self.var_name = data_name
+            self.init_dataset()
+    '''
+
+    def __post_init__(self):
         data_grp = Dataset(self.path)
 
         self.lats = data_grp.variables['lat'][:]
         self.lons = data_grp.variables['lon'][:]
         self.time = data_grp.variables['time'][:]
-        self.data = data_grp.variables[self.var_name][:]
+        data = data_grp.variables[self.var_name][:]
 
         data_grp.close()
+
+        self.min = data.min(axis=0)
+        self.max = data.max(axis=0)
+        self.median = data.median(axis=0)
+        self.var = data.var(axis=0)
+
+        data_grp.close()
+
+    def append_dataset(self, new_path):
+        self.path = new_path
+
+        data_grp = Dataset(self.path)
+
+        new_time = data_grp.variables['time'][:]
+        data = data_grp.variables[self.var_name][:]
+
+        data_grp.close()
+
+        self.min = np.concatenate((data.min(axis=0), self.min), axis=0).min(axis=0)
+        self.max = np.concatenate((data.max(axis=0), self.max), axis=0).max(axis=0)
+        self.median = np.concatenate((data.median(axis=0), self.median), axis=0).median(axis=0)
+        self.var = np.concatenate((data.var(axis=0), self.median), axis=0).var(axis=0)
+        self.time = np.concatenate((self.time, new_time), axis=0)
+
 
     def data_single_loc(self, lat_n, lon_n):
 
@@ -43,63 +86,18 @@ class nc_set():
 
         return self.data[:, select_lats, select_lons]
 
-def random_coords(lats, lons):
-
-    return np.random.choice(lats), np.random.choice(lons)
-
-def timeit_loop(ds):
-
-    lats = ds.lats
-    lons = ds.lons
-    stats = []
-
-    for n in range(0, 100):
-
-        # lat, lon = random_coords(lats[:-100], lons[:-100])
-
-        point = ds.data_single_loc(np.random.choice(range(len(lats))), np.random.choice(range(len(lons))))
-
-        if not point:
-            continue
-
-        stats.append(point)
-
-    return stats
-
-
-def timeit_fnc(ds):
-
-    lats = ds.lats
-    lons = ds.lons
-    stats = {}
-
-    rn = np.random.choice(range(len(lats)))
-    lat_min = lats[rn]
-    lat_max = lats[rn+100]
-    stats['lat'] = lats[rn:rn+100]
-
-    rn = np.random.choice(range(len(lons)))
-    lon_min = lons[rn]
-    lon_max = lons[rn+100]
-    stats['lon'] = lons[rn:rn+100]
-
-    dset = ds.find_subset(lat_max, lat_min, lon_max, lon_min)
-
-    stats['min'] = dset.min(axis=0)
-    stats['max'] = dset.max(axis=0)
-    stats['std'] = dset.std(axis=0)
-    stats['mean'] = dset.mean(axis=0)
-
-    return stats
-
 
 if __name__ == "__main__":
 
-    temp_max_file = "C:\Data\Weather Data\Temp Max\\tasmaxAdjust_day_GFDL-ESM2M_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20010101-20051231.nc"
-    temp_min_file = "C:\Data\Weather Data\Temp Min\\tasminAdjust_day_GFDL-CM3_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20000101-20041231.nc"
+    #temp_max_file = "C:\Data\Weather Data\Temp Max\\tasmaxAdjust_day_GFDL-ESM2M_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20010101-20051231.nc"
+    #temp_min_file = "C:\Data\Weather Data\Temp Min\\tasminAdjust_day_GFDL-CM3_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20000101-20041231.nc"
+    temp_max_file = "C:\\Datasets\\Weather Data\\Copernicus\\Temp Max\\tasmaxAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
+    temp_mean_file = "C:\\Datasets\\Weather Data\\Copernicus\\Temp Mean\\tasAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
+    temp_min_file = "C:\\Datasets\\Weather Data\\Copernicus\\Temp Min\\tasminAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
+    precip_flux_file = "C:\\Datasets\\Weather Data\\Copernicus\\Precip Flux\\prAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
     variable = 'tasmaxAdjust'
 
-    T_max_data = nc_set(temp_max_file, variable)
+    T_max_data = NCSet(temp_max_file, variable)
 
     print(timeit.Timer('timeit_loop(ds)').timeit(number=100))
     print(timeit.Timer('timeit_fnc(ds)').timeit(number=100))

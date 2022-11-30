@@ -55,6 +55,56 @@ for folder in file_directory['folder'].unique().tolist():
         print(bits[-2], bits[-1])
 
 
+    def random_coords(lats, lons):
+
+        return np.random.choice(lats), np.random.choice(lons)
+
+
+    def timeit_loop(ds):
+
+        lats = ds.lats
+        lons = ds.lons
+        stats = []
+
+        for n in range(0, 100):
+
+            # lat, lon = random_coords(lats[:-100], lons[:-100])
+
+            point = ds.data_single_loc(np.random.choice(range(len(lats))), np.random.choice(range(len(lons))))
+
+            if not point:
+                continue
+
+            stats.append(point)
+
+        return stats
+
+
+    def timeit_fnc(ds):
+
+        lats = ds.lats
+        lons = ds.lons
+        stats = {}
+
+        rn = np.random.choice(range(len(lats)))
+        lat_min = lats[rn]
+        lat_max = lats[rn + 100]
+        stats['lat'] = lats[rn:rn + 100]
+
+        rn = np.random.choice(range(len(lons)))
+        lon_min = lons[rn]
+        lon_max = lons[rn + 100]
+        stats['lon'] = lons[rn:rn + 100]
+
+        dset = ds.find_subset(lat_max, lat_min, lon_max, lon_min)
+
+        stats['min'] = dset.min(axis=0)
+        stats['max'] = dset.max(axis=0)
+        stats['std'] = dset.std(axis=0)
+        stats['mean'] = dset.mean(axis=0)
+
+        return stats
+
     #print(row['folder'], row['file'].split('_')[0])
     #print(row, type(row))
 
