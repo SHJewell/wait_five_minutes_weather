@@ -23,6 +23,14 @@ The nc_set dataclass will contain the masked arrays of statistical analysis of t
 If time permits, a SQL database can be set up to hold the raw data for the users edification,
 but both the analysis and dashboard should be set up ahead of time.
 
+Notes:
+Working on a laptop with 8Gb of memory has led me to realize that doing the calculations
+explicitly is too memory intensive. It does not appear that netCDF4 allows for fractional
+opening of files, so instead I propose to drop the masked points (which should be 2/3s of 
+the map, representing oceanic data) and vectorize the remainder. I may also serially save
+the data to external files to save space. Also, look at off the shelf libraries for large
+datasets.
+
 Current path:
     Develop analysis
         Optional -- Path structure

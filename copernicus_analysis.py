@@ -1,22 +1,24 @@
 import numpy as np
+
 from netCDF4 import Dataset
-import timeit
 from dataclasses import dataclass
+import pickle
+import sys
+import tracemalloc
 
 @dataclass
 class NCSet:
     path: str
     var_name: str
-    stats: dict
-    lats: np.ma.core.MaskedArray
-    lons: np.ma.core.MaskedArray
-    time: np.ma.core.MaskedArray
-    # data: np.ma.core.MaskedArray  to be used to build an external database
-    min: np.ma.core.MaskedArray
-    max: np.ma.core.MaskedArray
-    median: np.ma.core.MaskedArray
-    var: np.ma.core.MaskedArray
-    # stddev: np.ma.core.MaskedArray
+    # lats: np.ma.core.MaskedArray
+    # lons: np.ma.core.MaskedArray
+    # time: np.ma.core.MaskedArray
+    # # data: np.ma.core.MaskedArray  to be used to build an external database
+    # min: np.ma.core.MaskedArray
+    # max: np.ma.core.MaskedArray
+    # median: np.ma.core.MaskedArray
+    # var: np.ma.core.MaskedArray
+    # # stddev: np.ma.core.MaskedArray
 
 
     '''
@@ -28,6 +30,15 @@ class NCSet:
     '''
 
     def __post_init__(self):
+        # lats: np.ma.core.MaskedArray
+        # lons: np.ma.core.MaskedArray
+        # time: np.ma.core.MaskedArray
+        # # data: np.ma.core.MaskedArray  to be used to build an external database
+        # min: np.ma.core.MaskedArray
+        # max: np.ma.core.MaskedArray
+        # median: np.ma.core.MaskedArray
+        # var: np.ma.core.MaskedArray
+
         data_grp = Dataset(self.path)
 
         self.lats = data_grp.variables['lat'][:]
@@ -35,14 +46,26 @@ class NCSet:
         self.time = data_grp.variables['time'][:]
         data = data_grp.variables[self.var_name][:]
 
-        data_grp.close()
-
         self.min = data.min(axis=0)
         self.max = data.max(axis=0)
-        self.median = data.median(axis=0)
+        self.median = np.ma.median(data, axis=0)
         self.var = data.var(axis=0)
 
         data_grp.close()
+
+    def vectorize(self, array):
+        '''
+        Drops masked data and vectorizes data from our map arrays
+
+        Args:
+            array:
+
+        Returns: 1-d np. array
+
+        '''
+
+        return
+
 
     def append_dataset(self, new_path):
         self.path = new_path
@@ -89,18 +112,37 @@ class NCSet:
 
 if __name__ == "__main__":
 
+    sets = dict()
+
+    files = {'temp_max':    "C:\\Datasets\\Weather Data\\Copernicus\\Temp Max\\tasmaxAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc",
+            'temp_min':     "C:\\Datasets\\Weather Data\\Copernicus\\Temp Mean\\tasAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc",
+            'temp_mean':    "C:\\Datasets\\Weather Data\\Copernicus\\Temp Min\\tasminAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc",
+            'precip':       "C:\\Datasets\\Weather Data\\Copernicus\\Precip Flux\\prAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
+             }
+    var_names = {'temp_max':  'tasmaxAdjust',
+                 'temp_min':  'tasminAdjust',
+                 'temp_mean': 'tasAdjust',
+                 'precip':    'prAdjust'}
+
+    # T_max_data = NCSet(temp_max_file, variable)
+
+    for key, value in files.items():
+
+        sets[key] = NCSet(value, var_names[key])
+
+    with open('processed_weather_data.pickle', 'wb') as f:
+        pickle.dump(sets, f)
+
+
     #temp_max_file = "C:\Data\Weather Data\Temp Max\\tasmaxAdjust_day_GFDL-ESM2M_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20010101-20051231.nc"
     #temp_min_file = "C:\Data\Weather Data\Temp Min\\tasminAdjust_day_GFDL-CM3_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20000101-20041231.nc"
-    temp_max_file = "C:\\Datasets\\Weather Data\\Copernicus\\Temp Max\\tasmaxAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
-    temp_mean_file = "C:\\Datasets\\Weather Data\\Copernicus\\Temp Mean\\tasAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
-    temp_min_file = "C:\\Datasets\\Weather Data\\Copernicus\\Temp Min\\tasminAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
-    precip_flux_file = "C:\\Datasets\\Weather Data\\Copernicus\\Precip Flux\\prAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
-    variable = 'tasmaxAdjust'
-
-    T_max_data = NCSet(temp_max_file, variable)
-
-    print(timeit.Timer('timeit_loop(ds)').timeit(number=100))
-    print(timeit.Timer('timeit_fnc(ds)').timeit(number=100))
-
+    # temp_max_file = "C:\\Datasets\\Weather Data\\Copernicus\\Temp Max\\tasmaxAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
+    # temp_mean_file = "C:\\Datasets\\Weather Data\\Copernicus\\Temp Mean\\tasAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
+    # temp_min_file = "C:\\Datasets\\Weather Data\\Copernicus\\Temp Min\\tasminAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
+    # precip_flux_file = "C:\\Datasets\\Weather Data\\Copernicus\\Precip Flux\\prAdjust_day_GFDL-ESM2G_SMHI-DBSrev930-GFD-1981-2010-postproc_rcp45_r1i1p1_20160101-20201231.nc"
+    # tmax_name = 'tasmaxAdjust'
+    # tmin_name = 'tasminAdjust'
+    # tm_name = 'tasAdjust'
+    # precip_name = 'prAdjust'
     # print(timeit_loop(T_max_data))
     # print(timeit_loop(T_max_data))
