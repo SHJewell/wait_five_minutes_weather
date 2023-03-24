@@ -5,40 +5,15 @@ from dataclasses import dataclass
 import pickle
 import sys
 import tracemalloc
+import datetime
+import scipy
 
 @dataclass
 class NCSet:
     path: str
     var_name: str
-    # lats: np.ma.core.MaskedArray
-    # lons: np.ma.core.MaskedArray
-    # time: np.ma.core.MaskedArray
-    # # data: np.ma.core.MaskedArray  to be used to build an external database
-    # min: np.ma.core.MaskedArray
-    # max: np.ma.core.MaskedArray
-    # median: np.ma.core.MaskedArray
-    # var: np.ma.core.MaskedArray
-    # # stddev: np.ma.core.MaskedArray
-
-
-    '''
-    I guess data classes don't need this if you have the hints above
-        def __init__(self, path: str, data_name: str):
-            self.path = path
-            self.var_name = data_name
-            self.init_dataset()
-    '''
 
     def __post_init__(self):
-        # lats: np.ma.core.MaskedArray
-        # lons: np.ma.core.MaskedArray
-        # time: np.ma.core.MaskedArray
-        # # data: np.ma.core.MaskedArray  to be used to build an external database
-        # min: np.ma.core.MaskedArray
-        # max: np.ma.core.MaskedArray
-        # median: np.ma.core.MaskedArray
-        # var: np.ma.core.MaskedArray
-
         data_grp = Dataset(self.path)
 
         self.lats = data_grp.variables['lat'][:]
@@ -108,6 +83,84 @@ class NCSet:
         select_lons = np.argwhere((self.lons > lon_min) & (self.lons < lon_max))
 
         return self.data[:, select_lats, select_lons]
+
+def wait_five_minutes_analysis(files, new_file, start_date=None, end_date=None):
+    '''
+    Analysis needed:
+        *Daily temperature swing
+        *Precipitation standard deviation
+        *variability in temperature (standard deviation?)
+        *liklihood of it getting much cooler
+        *liklihood of it getting much warmer
+    Returns:
+
+    '''
+
+
+    extracted_sets = list(files.keys())
+    rootgrp = Dataset(files[extracted_sets[0]], 'r')
+
+    new_file = f'{new_file}-{start_date.strftime("%Y%m%d")}-{end_date.strftime("%Y%m%d")}.nc'
+    date0 = datetime.timedelta(days=np.floor(float(rootgrp.variables['time'][0]))) + datetime.date(year=1850,
+                                                                                                   month=1, day=1)
+    days_diff = []
+    days_diff.append((start_date - date0).days)
+    days_diff.append((end_date - date0).days)
+
+    lats = rootgrp.variables['lat'][:]
+    lons = rootgrp.variables['lon'][:]
+    dt = rootgrp.variables['time'][days_diff[0]:days_diff[1]]
+    dset = rootgrp.variables[extracted_sets[0]][days_diff[0]:days_diff[1], :, :]
+
+    newgrp = Dataset(new_file, "w")
+    newgrp.createDimension('lat', len(lats))
+    newgrp.createDimension('lon', len(lons))
+    newgrp.createDimension('time', len(dt))
+    lat = newgrp.createVariable('lat', 'f4', ('lat',))
+    lat[:] = lats
+    lon = newgrp.createVariable('lon', 'f4', ('lon',))
+    lon[:] = lons
+
+    for n, var_name in enumerate(extracted_sets):
+        print(var_name)
+
+        if n != 0:
+            rootgrp = Dataset(files[extracted_sets[n]], 'r')
+            dset = rootgrp.variables[extracted_sets[n]][days_diff[0]:days_diff[1], :, :]
+
+        new_var_mean = newgrp.createVariable(f'{var_name}_mean', 'f4', ('lat', 'lon'))
+        new_var_mean[:, :] = np.nanmean(dset, axis=0)
+        new_var_median = newgrp.createVariable(f'{var_name}_median', 'f4', ('lat', 'lon'))
+        new_var_median[:, :] = np.nanmedian(dset, axis=0)
+        new_var_max = newgrp.createVariable(f'{var_name}_max', 'f4', ('lat', 'lon'))
+        new_var_max[:, :] = np.max(dset, axis=0)
+        new_var_min = newgrp.createVariable(f'{var_name}_min', 'f4', ('lat', 'lon'))
+        new_var_min[:, :] = np.min(dset, axis=0)
+        new_var_std = newgrp.createVariable(f'{var_name}_std', 'f4', ('lat', 'lon'))
+        new_var_std[:, :] = np.nanstd(dset, axis=0)
+
+    #temp_swing
+    print('Temp Swing')
+    temp_swing = newgrp.createVariable(f'temp_swing', 'f4', ('lat', 'lon'))
+    temp_swing[:, :] = newgrp.variables['tasmaxAdjust_mean'][:] - newgrp.variables['tasminAdjust_mean'][:]
+
+    #total temp variability
+    print('Temp Variability')
+    temp_variability = newgrp.createVariable(f'temp_var', 'f4', ('lat', 'lon'))
+    temp_variability[:, :] = np.nanmean([newgrp.variables['tasmaxAdjust_std'][:],
+                                        newgrp.variables['tasminAdjust_std'][:],
+                                        newgrp.variables['tasAdjust_std'][:]], axis=0)
+
+    #liklihood of hot day
+    tdiff = np.diff(rootgrp.variables['tasmaxAdjust'][:] - np.nanmean(rootgrp.variables['tasAdjust'][:]))
+
+    rootgrp.close()
+    newgrp.sync()
+    newgrp.close()
+
+    def likelyhood_analysis():
+
+        pass
 
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@ temperature, precipitation, wind, cloud cover and humidity.
 
 Data is from Copernicus Atmospheric Monitoring Service (CAMS)
 based in the EU. They can be found
-https://atmosphere.copernicus.eu/
 
 CAMS has a web API for pulling data directly into Python. Useful, that.
 
@@ -51,4 +50,7 @@ Current path:
             Data selection methods
     Optional
         Additional data
+
+Statistical analysis:
+
 
